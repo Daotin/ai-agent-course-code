@@ -1,98 +1,160 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# cron-job-tool
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+定时任务 Agent 实现，支持自然语言创建定时/周期任务，到时间由 AI Agent 自动执行。
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 整体架构
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ pnpm install
+```
+用户请求
+    ↓
+AiService (对话Agent)
+    ↓ 调用 cron_job 工具
+CronJobToolService → JobService (保存任务到数据库，启动调度器)
+                                ↓ 到时间触发
+                        JobAgentService (执行Agent)
+                            ↓ 调用各种工具
+                        发邮件 / 搜索 / 操作数据库...
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ pnpm run start
+## 核心概念
 
-# watch mode
-$ pnpm run start:dev
+**两个 Agent 职责分离：**
 
-# production mode
-$ pnpm run start:prod
+- `AiService`：理解用户意图，把"什么时候做什么"拆分，安排定时任务
+- `JobAgentService`：在正确时间执行任务，负责真正干活
+
+**定时任务的本质：**
+不是直接执行代码，而是把一段自然语言指令存到数据库，到时间再让另一个 Agent 去理解并执行。
+
+**调度器与数据库的关系：**
+- 数据库 = 纸质备忘录（永久保存）
+- 调度器 = 脑子里的闹钟（程序重启就忘）
+- `onApplicationBootstrap` = 每次开机先看一眼备忘录，把闹钟重新设好
+
+---
+
+## 三种定时类型
+
+| 类型 | 原理 | 场景 |
+|------|------|------|
+| `at` | `setTimeout` | 某个时间点执行一次，执行后自动停用 |
+| `every` | `setInterval` | 每隔 X 毫秒重复执行 |
+| `cron` | `CronJob` | 按 Cron 表达式执行 |
+
+---
+
+## 完整执行流程示例
+
+以用户说 **"1分钟后给我发一封笑话邮件"** 为例：
+
+### 第一阶段：对话 Agent 处理用户请求
+
+**`AiService.runChain("1分钟后给我发一封笑话邮件")`**
+
+**第1轮循环：**
+```
+messages = [SystemMessage, HumanMessage("1分钟后给我发一封笑话邮件")]
+           ↓ 发给模型
+模型回复：我需要知道当前时间，调用 time_now
+           ↓ 代码执行 timeNowTool
+返回：{ time: "2026-04-13T11:49:00Z" }
+           ↓ 追加 ToolMessage 到 messages
 ```
 
-## Run tests
-
-```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+**第2轮循环：**
+```
+messages = [...上面的, ToolMessage(time_now结果)]
+           ↓ 发给模型
+模型回复：知道当前时间了，调用 cron_job，参数：
+  action: "add"
+  type: "at"
+  at: "2026-04-13T11:50:00Z"   ← 当前时间+1分钟
+  instruction: "给我发一封笑话邮件"  ← 只保留"做什么"
+           ↓ 代码执行 cronJobTool.invoke(上面参数)
 ```
 
-## Deployment
+**此时进入 `JobService.addJob()`：**
+```
+1. 在数据库创建一条 Job 记录：
+   { id: "abc123", type: "at", at: 2026-04-13T11:50:00Z,
+     instruction: "给我发一封笑话邮件", isEnabled: true }
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+2. 调用 startRuntime(job)：
+   delay = 11:50:00 - 11:49:00 = 60000ms
+   setTimeout(() => { jobAgentService.runJob(...) }, 60000)
+   ← 一个60秒的倒计时在内存里开始跑
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+> startRuntime里面就是对三种不同的类型，采用不同的原理来 jobAgentService.runJob 执行。jobAgentService.runJob 就是第二个 Agent 来执行任务。
 
-## Resources
+**第3轮循环：**
+```
+messages = [..., ToolMessage(cron_job结果: "已新增任务id=abc123")]
+           ↓ 发给模型
+模型回复：（没有 tool_calls 了）
+  "好的，已为您设置定时任务，将在1分钟后发送笑话邮件。"
+           ↓ toolCalls.length === 0，退出循环
+返回给用户这句话
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+---
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### 第二阶段：60秒后，调度器触发
 
-## Support
+**`setTimeout` 到期，执行回调：**
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```
+1. 更新数据库：lastRun = now, isEnabled = false  ← at 类型只跑一次
 
-## Stay in touch
+2. 调用 jobAgentService.runJob("给我发一封笑话邮件")
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+### 第三阶段：执行 Agent 干活
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+**`JobAgentService.runJob("给我发一封笑话邮件")`**
+
+**第1轮循环：**
+```
+messages = [SystemMessage, HumanMessage("给我发一封笑话邮件")]
+           ↓ 发给模型
+模型回复：需要先搜一个笑话，调用 web_search
+  args: { query: "funny joke" }
+           ↓ 执行 webSearchTool
+返回："为什么程序员不喜欢户外？因为有太多 bugs..."
+```
+
+**第2轮循环：**
+```
+messages = [..., ToolMessage(web_search结果)]
+           ↓ 发给模型
+模型回复：有笑话了，调用 send_mail
+  args: { to: "xxx@example.com", subject: "笑话", body: "为什么程序员..." }
+           ↓ 执行 sendMailTool
+返回："邮件发送成功"
+```
+
+**第3轮循环：**
+```
+messages = [..., ToolMessage(send_mail结果)]
+           ↓ 发给模型
+模型回复：（没有 tool_calls）"任务完成，笑话邮件已发送。"
+           ↓ 退出循环，打印日志
+```
+
+---
+
+## 一张图总结
+
+```
+用户 → AiService(循环) → cron_job工具 → JobService → 存DB + setTimeout
+                                                              ↓ 60秒后
+                                              JobAgentService(循环) → web_search → send_mail → 完成
+```
+
+两个 Agent 都是同一个模式：**while循环 + 工具调用**，区别只是触发时机不同——一个是用户触发，一个是定时器触发。

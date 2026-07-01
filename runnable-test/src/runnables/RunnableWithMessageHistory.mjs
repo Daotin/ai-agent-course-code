@@ -1,8 +1,11 @@
-import 'dotenv/config';
+import "dotenv/config";
 import { RunnableWithMessageHistory } from "@langchain/core/runnables";
 import { InMemoryChatMessageHistory } from "@langchain/core/chat_history";
 import { ChatOpenAI } from "@langchain/openai";
-import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts";
+import {
+  ChatPromptTemplate,
+  MessagesPlaceholder,
+} from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 
 const model = new ChatOpenAI({
@@ -35,6 +38,13 @@ const getMessageHistory = (sessionId) => {
 };
 
 // 创建带消息历史的链
+/**
+ * 从 getMessageHistory(sessionId) 获取历史对话
+将历史记录插入到 history 占位符
+将用户输入作为 question 字段
+调用 AI 模型
+自动将用户问题和 AI 回复追加到历史记录
+ */
 const chain = new RunnableWithMessageHistory({
   runnable: simpleChain,
   getMessageHistory: (sessionId) => getMessageHistory(sessionId),
@@ -43,7 +53,15 @@ const chain = new RunnableWithMessageHistory({
 });
 
 // 测试：第一次对话
-console.log('--- 第一次对话（提供信息） ---');
+console.log("--- 第一次对话（提供信息） ---");
+/**
+ * 参数结构：
+ * // 第1参数：业务输入数据（内容相关）
+{ question: "..." }
+
+// 第2参数：运行配置（执行方式相关）
+{ configurable: { sessionId: "...", model: '', temperature: 0.3, timeout: 60000 } }
+ */
 const result1 = await chain.invoke(
   {
     question: "我的名字是神光，我来自山东，我喜欢编程、写作、金铲铲。",
@@ -52,14 +70,14 @@ const result1 = await chain.invoke(
     configurable: {
       sessionId: "user-123",
     },
-  }
+  },
 );
-console.log('问题: 我的名字是神光，我来自山东，我喜欢编程、写作、金铲铲。');
-console.log('回答:', result1);
+console.log("问题: 我的名字是神光，我来自山东，我喜欢编程、写作、金铲铲。");
+console.log("回答:", result1);
 console.log();
 
 // 测试：第二次对话
-console.log('--- 第二次对话（询问之前的信息） ---');
+console.log("--- 第二次对话（询问之前的信息） ---");
 const result2 = await chain.invoke(
   {
     question: "我刚才说我来自哪里？",
@@ -68,14 +86,14 @@ const result2 = await chain.invoke(
     configurable: {
       sessionId: "user-123",
     },
-  }
+  },
 );
-console.log('问题: 我刚才说我来自哪里？');
-console.log('回答:', result2);
+console.log("问题: 我刚才说我来自哪里？");
+console.log("回答:", result2);
 console.log();
 
 // 测试：第三次对话
-console.log('--- 第三次对话（继续询问） ---');
+console.log("--- 第三次对话（继续询问） ---");
 const result3 = await chain.invoke(
   {
     question: "我的爱好是什么？",
@@ -84,8 +102,8 @@ const result3 = await chain.invoke(
     configurable: {
       sessionId: "user-123",
     },
-  }
+  },
 );
-console.log('问题: 我的爱好是什么？');
-console.log('回答:', result3);
+console.log("问题: 我的爱好是什么？");
+console.log("回答:", result3);
 console.log();

@@ -10,7 +10,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
 import { User } from './users/entities/user.entity';
 import { Job } from './job/entities/job.entity';
-import { CronExpression, ScheduleModule, SchedulerRegistry } from '@nestjs/schedule';
+import {
+  CronExpression,
+  ScheduleModule,
+  SchedulerRegistry,
+} from '@nestjs/schedule';
 import { JobModule } from './job/job.module';
 import { CronJob } from 'cron';
 
@@ -27,7 +31,7 @@ import { CronJob } from 'cron';
       synchronize: true,
       connectorPackage: 'mysql2',
       logging: true,
-      entities: [User, Job],
+      entities: [User, Job], // 这样 typeorm 就知道这是一个 entity，需要在数据库中创建对应的表。
     }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
@@ -73,7 +77,6 @@ export class AppModule implements OnApplicationBootstrap {
     // setTimeout(() => {
     //   this.schedulerRegistry.deleteCronJob('job1');
     // }, 5000);
-
     // const intervalRef = setInterval(() => {
     //   console.log('run interval job');
     // }, 1000);
@@ -81,7 +84,6 @@ export class AppModule implements OnApplicationBootstrap {
     // setTimeout(() => {
     //   this.schedulerRegistry.deleteInterval('interval1');
     // }, 5000);
-
     // const timeoutRef = setTimeout(() => {
     //   console.log('run timeout job');
     // }, 3000);
@@ -91,4 +93,3 @@ export class AppModule implements OnApplicationBootstrap {
     // }, 5000);
   }
 }
-
