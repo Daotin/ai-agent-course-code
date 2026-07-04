@@ -6,3 +6,38 @@ node_modules/
 *.env
 volumes/
 dist/
+
+
+# environment variables
+.env
+.env.*
+!.env.example
+
+# logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# build output
+dist/
+build/
+.next/
+out/
+coverage/
+
+# cache
+.cache/
+.turbo/
+.parcel-cache/
+.eslintcache
+*.tsbuildinfo
+
+# editor / os
+.DS_Store
+.idea/
+.vscode/
+
+volumes/
