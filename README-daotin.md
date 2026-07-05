@@ -4,6 +4,40 @@
 
 ---
 
+模型列表：
+
+- qwen3.6-flash-2026-04-16
+- qwen3.5-plus-2026-04-20
+- deepseek-v4-flash
+- qwen3.6-35b-a3b
+- qwen3.7-plus
+- glm-5.1
+
+- qwen3.7-max-2026-05-17
+- qwen3.7-max-2026-06-08
+- qwen3.7-max-preview
+
+---
+
+python3 ~/Documents/daotin-code/pdf2md/pdf2md.py ../-courseware/实现\ mini\ cursor：大模型自动调用\ tool\ 执行命令.pdf
+
+
+---
+
+请根据项目代码和课件资料，回答问题到项目的note.md（如果不存在则创建）
+- 什么是RAG？用一句话来表示。
+- 怎么查出来的？用什么方法？原理是什么？怎么知道一个概念的向量值呢？
+- 整个RAG的流程是怎样的？
+
+输出约束：/Users/fengdaoting/Documents/daotin-code/ai-agent-course-code/prompt.md
+
+参考资料：
+- 课件文档：/Users/fengdaoting/Documents/daotin-code/ai-agent-course-code/-courseware/RAG：把文档向量化，基于向量实现真正的语义搜索.md
+- 项目路径：/Users/fengdaoting/Documents/daotin-code/ai-agent-course-code/-daotin/2-rag/rag-test
+
+
+---
+
 ## AI Agent开发到底学什么？
 
 AI不管如何发展，它总是有一些问题需要解决的。比如需要加记忆Memory能力，然后专业领域的调用能力，就是就要加Tools。然后还有一些知识库查询，需要RAG技术。这就是AI Agent的开发能力。

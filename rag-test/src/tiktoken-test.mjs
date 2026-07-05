@@ -1,10 +1,10 @@
 import { getEncoding, getEncodingNameForModel } from "js-tiktoken"; 
 
-const modelName = "gpt-4"; 
+const modelName = "gpt-5"; 
 const encodingName = getEncodingNameForModel(modelName);
 console.log(encodingName);
 
-const enc = getEncoding("cl100k_base");
+const enc = getEncoding(encodingName);
 console.log('apple', enc.encode("apple").length);
 console.log('pineapple', enc.encode("pineapple").length);
 console.log('苹果', enc.encode("苹果").length);
